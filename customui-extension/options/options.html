@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CustomUI Settings</title>
+  <link rel="stylesheet" href="options.css" />
+</head>
+<body>
+  <div id="page">
+
+    <header>
+      <h1>CustomUI Settings</h1>
+    </header>
+
+    <main>
+
+      <!-- API Configuration -->
+      <section class="card" id="section-api">
+        <h2>API Configuration</h2>
+
+        <div class="field">
+          <label for="provider">Provider</label>
+          <select id="provider">
+            <option value="anthropic">Anthropic (Claude)</option>
+            <option value="openai">OpenAI</option>
+            <option value="custom">Custom endpoint</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="api-key">API Key</label>
+          <div class="input-with-toggle">
+            <input type="password" id="api-key" placeholder="Paste your API key here" autocomplete="off" />
+            <button type="button" id="btn-toggle-key" aria-label="Show/hide API key">Show</button>
+          </div>
+          <p class="hint">Your key is stored locally in your browser and never sent anywhere except the AI provider you select.</p>
+        </div>
+
+        <div class="field">
+          <label for="model">Model</label>
+          <input type="text" id="model" placeholder="e.g. claude-sonnet-4-6" />
+        </div>
+
+        <div class="field" id="field-custom-endpoint" style="display:none">
+          <label for="custom-endpoint">Custom Endpoint URL</label>
+          <input type="url" id="custom-endpoint" placeholder="https://your-proxy.example.com/v1/chat/completions" />
+        </div>
+
+        <div class="actions">
+          <button id="btn-save-api" class="btn-primary">Save</button>
+          <span id="api-save-status" class="save-status hidden">Saved!</span>
+        </div>
+      </section>
+
+      <!-- Saved Modifications -->
+      <section class="card" id="section-mods">
+        <h2>Saved Modifications</h2>
+        <p class="hint" id="mods-empty-hint">No saved modifications yet. Customize a page and click "Save for this page" in the popup.</p>
+        <ul id="mods-list" class="mods-list"></ul>
+      </section>
+
+      <!-- Blocklist -->
+      <section class="card" id="section-blocklist">
+        <h2>Blocklist</h2>
+        <p class="hint">CustomUI will never activate on these domains.</p>
+        <textarea id="blocklist-input" rows="6" placeholder="One domain per line&#10;e.g. bankofamerica.com"></textarea>
+        <div class="actions">
+          <button id="btn-save-blocklist" class="btn-primary">Save</button>
+          <span id="blocklist-save-status" class="save-status hidden">Saved!</span>
+        </div>
+      </section>
+
+    </main>
+
+  </div>
+
+  <script type="module" src="options.js"></script>
+</body>
+</html>

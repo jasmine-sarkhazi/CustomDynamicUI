@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CustomUI Icon Preview</title>
+<style>
+  body { background: #f0f0f0; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: system-ui, sans-serif; flex-direction: column; gap: 40px; }
+  .row { display: flex; align-items: flex-end; gap: 48px; }
+  .item { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .label { font-size: 13px; color: #666; }
+  .bg-dark { background: #1a1a2e; border-radius: 8px; padding: 16px; }
+  .context { display: flex; gap: 40px; }
+</style>
+</head>
+<body>
+  <div class="row">
+    <div class="item">
+      <img src="icon2-128.png" width="128" height="128">
+      <span class="label">128 × 128</span>
+    </div>
+    <div class="item">
+      <img src="icon2-48.png" width="48" height="48">
+      <span class="label">48 × 48</span>
+    </div>
+    <div class="item">
+      <img src="icon2-16.png" width="16" height="16">
+      <span class="label">16 × 16</span>
+    </div>
+  </div>
+  <div class="context">
+    <div class="item">
+      <div class="bg-dark"><img src="icon2-48.png" width="48" height="48"></div>
+      <span class="label">On dark</span>
+    </div>
+    <div class="item">
+      <img src="icon2-48.png" width="96" height="96">
+      <span class="label">2× zoom</span>
+    </div>
+  </div>
+</body>
+</html>

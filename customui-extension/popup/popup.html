@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CustomUI</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- Header -->
+    <header id="header">
+      <div id="header-left">
+        <span id="logo">CustomUI</span>
+        <span id="active-badge" class="hidden">● Active</span>
+      </div>
+      <div id="header-right">
+        <button id="btn-settings" title="Settings" aria-label="Open settings">⚙</button>
+      </div>
+    </header>
+
+    <!-- Status bar (shown when mods are active on current page) -->
+    <div id="status-bar" class="hidden">
+      <span id="status-text">Modifications active for this page</span>
+      <label class="toggle">
+        <input type="checkbox" id="toggle-enabled" checked />
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+
+    <!-- Warning banner for sensitive pages -->
+    <div id="warning-banner" class="hidden">
+      <span>⚠ This page may contain payment or login fields. Proceed carefully.</span>
+    </div>
+
+    <!-- Chat thread -->
+    <div id="chat-thread" role="log" aria-live="polite" aria-label="Conversation">
+      <!-- Welcome state -->
+      <div id="welcome">
+        <p id="welcome-message">What would you like to change about this page?</p>
+        <div id="starter-prompts">
+          <button class="starter-prompt" data-prompt="Simplify this page">Simplify this page</button>
+          <button class="starter-prompt" data-prompt="Help me find what I need">Help me find what I need</button>
+          <button class="starter-prompt" data-prompt="Make this form easier to use">Make this form easier to use</button>
+          <button class="starter-prompt" data-prompt="Hide the distracting parts">Hide the distracting parts</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Typing indicator -->
+    <div id="typing-indicator" class="hidden">
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+    </div>
+
+    <!-- Action bar (save/reset, shown after first modification) -->
+    <div id="action-bar" class="hidden">
+      <button id="btn-reset" title="Undo all modifications and restore original page">Reset</button>
+      <button id="btn-save" title="Save these modifications for this page">Save for this page</button>
+    </div>
+
+    <!-- Input area -->
+    <div id="input-area">
+      <textarea
+        id="message-input"
+        placeholder="Describe what you'd like to change…"
+        rows="2"
+        aria-label="Your message"
+      ></textarea>
+      <button id="btn-send" aria-label="Send message" disabled>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M14 8L2 2L5 8L2 14L14 8Z" fill="currentColor"/>
+        </svg>
+      </button>
+    </div>
+
+  </div>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
