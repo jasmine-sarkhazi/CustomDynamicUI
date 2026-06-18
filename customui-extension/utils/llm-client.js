@@ -151,14 +151,58 @@ function buildMessages(history, userContent) {
 function parseResponse(raw) {
   // Strip markdown fences if the model wrapped the JSON
   const cleaned = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
+  const candidate = cleaned.match(/\{[\s\S]*\}/)?.[0] ?? cleaned;
   try {
-    return JSON.parse(cleaned);
+    return JSON.parse(candidate);
   } catch {
-    // Fallback: try to extract JSON object
-    const match = cleaned.match(/\{[\s\S]*\}/);
-    if (match) return JSON.parse(match[0]);
-    throw new Error("LLM returned non-JSON response");
+    // Models routinely emit multi-line CSS/JS as raw newlines inside JSON
+    // string literals, which JSON.parse rejects. Escape control chars that
+    // appear inside "...".
+    return JSON.parse(escapeControlCharsInStrings(candidate));
   }
+}
+
+function escapeControlCharsInStrings(json) {
+  let out = "";
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < json.length; i++) {
+    const ch = json[i];
+    if (!inString) {
+      if (ch === '"') inString = true;
+      out += ch;
+      continue;
+    }
+    if (escaped) {
+      out += ch;
+      escaped = false;
+      continue;
+    }
+    if (ch === "\\") {
+      out += ch;
+      escaped = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = false;
+      out += ch;
+      continue;
+    }
+    switch (ch) {
+      case "\n": out += "\\n"; break;
+      case "\r": out += "\\r"; break;
+      case "\t": out += "\\t"; break;
+      case "\b": out += "\\b"; break;
+      case "\f": out += "\\f"; break;
+      default:
+        if (ch.charCodeAt(0) < 0x20) {
+          out += "\\u" + ch.charCodeAt(0).toString(16).padStart(4, "0");
+        } else {
+          out += ch;
+        }
+    }
+  }
+  return out;
 }
 
 function defaultModel(provider) {
