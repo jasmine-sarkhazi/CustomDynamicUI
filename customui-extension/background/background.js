@@ -188,19 +188,41 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
-function captureDOM(tabId) {
-  return new Promise((resolve) => {
-    chrome.tabs.sendMessage(tabId, { type: "capture_dom" }, (response) => {
-      if (chrome.runtime.lastError) {
-        resolve({ error: chrome.runtime.lastError.message });
-      } else {
-        resolve(response ?? { error: "No response from content script" });
-      }
+async function ensureContentScript(tabId) {
+  try {
+    const pong = await chrome.tabs.sendMessage(tabId, { type: "ping" });
+    if (pong?.ready) return true;
+  } catch {
+    // Content script not present — fall through to inject.
+  }
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ["content/content.js"],
     });
-  });
+    return true;
+  } catch (err) {
+    console.warn("[CustomUI background] Could not inject content script:", err.message);
+    return false;
+  }
+}
+
+async function captureDOM(tabId) {
+  const ready = await ensureContentScript(tabId);
+  if (!ready) {
+    return { error: "CustomUI can't run on this page (try a regular http(s) page)." };
+  }
+  try {
+    const response = await chrome.tabs.sendMessage(tabId, { type: "capture_dom" });
+    return response ?? { error: "No response from content script" };
+  } catch (err) {
+    return { error: err.message };
+  }
 }
 
 async function injectMods(tabId, css, js) {
+  const ready = await ensureContentScript(tabId);
+  if (!ready) return;
   await chrome.tabs.sendMessage(tabId, { type: "inject_mods", css, js }).catch((err) => {
     console.warn("[CustomUI background] inject_mods failed:", err.message);
   });
