@@ -14,7 +14,7 @@
 
 import { LLMClient } from "../utils/llm-client.js";
 import { Storage } from "../utils/storage.js";
-import { isSensitivePage, buildUrlPattern } from "../utils/safety.js";
+import { isSensitivePage, buildUrlPattern, validateJs } from "../utils/safety.js";
 
 // Per-tab conversation state (ephemeral — lives in service worker memory)
 // Map<tabId, { history: Message[], css: string, js: string }>
@@ -149,7 +149,13 @@ async function saveMods(tabId, url) {
 
 async function resetMods(tabId) {
   tabState.delete(tabId);
-  await chrome.tabs.sendMessage(tabId, { type: "remove_mods" }).catch(() => {});
+  const css = lastInjectedCss.get(tabId);
+  if (css) {
+    await chrome.scripting.removeCSS({ target: { tabId }, css }).catch(() => {});
+    lastInjectedCss.delete(tabId);
+  }
+  // JS modifications can't be undone without a page reload — tell the user.
+  await chrome.tabs.reload(tabId).catch(() => {});
   return { success: true };
 }
 
@@ -223,10 +229,58 @@ async function captureDOM(tabId) {
 async function injectMods(tabId, css, js) {
   const ready = await ensureContentScript(tabId);
   if (!ready) return;
-  await chrome.tabs.sendMessage(tabId, { type: "inject_mods", css, js }).catch((err) => {
-    console.warn("[CustomUI background] inject_mods failed:", err.message);
-  });
+
+  // CSS via scripting.insertCSS bypasses page CSP. We remove any prior
+  // injected sheet first so re-runs don't accumulate.
+  try {
+    if (lastInjectedCss.get(tabId)) {
+      await chrome.scripting.removeCSS({
+        target: { tabId },
+        css: lastInjectedCss.get(tabId),
+      }).catch(() => {});
+    }
+    if (css) {
+      await chrome.scripting.insertCSS({ target: { tabId }, css });
+      lastInjectedCss.set(tabId, css);
+    } else {
+      lastInjectedCss.delete(tabId);
+    }
+  } catch (err) {
+    console.warn("[CustomUI background] insertCSS failed:", err.message);
+  }
+
+  // JS in the page's MAIN world — bypasses page CSP, can mutate the real DOM.
+  if (js) {
+    const jsError = validateJs(js);
+    if (jsError) {
+      console.warn("[CustomUI background] Blocked unsafe JS:", jsError);
+      return;
+    }
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        world: "MAIN",
+        func: (code) => {
+          try {
+            // indirect eval runs in global scope, bypasses page CSP when
+            // injected via scripting.executeScript.
+            (0, eval)(code);
+          } catch (e) {
+            console.error("[CustomUI] user JS threw:", e);
+          }
+        },
+        args: [js],
+      });
+    } catch (err) {
+      console.warn("[CustomUI background] executeScript failed:", err.message);
+    }
+  }
+
+  // Flash highlight stays in the content script (needs DOM measurement).
+  await chrome.tabs.sendMessage(tabId, { type: "flash_mods", css }).catch(() => {});
 }
+
+const lastInjectedCss = new Map();
 
 function generateDisplayName(url, prompt) {
   // Simple heuristic — can be replaced with an LLM call later

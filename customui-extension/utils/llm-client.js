@@ -18,7 +18,8 @@ You respond with JSON containing three fields:
 
 Rules:
 - Output the FULL accumulated CSS/JS each turn (not a diff). Merge prior modifications with new ones.
-- Prefer CSS-only solutions; use JS only when CSS cannot achieve the goal.
+- Prefer CSS for restyling, hiding, repositioning. Use JS whenever the request requires ADDING new elements (buttons, banners, sections, content) or changing text content — CSS alone cannot insert real DOM elements (only ::before/::after pseudo content, which is not interactive).
+- JS runs once per turn in the page's main world. Make it idempotent: check for an existing element by id before inserting, so re-runs don't duplicate.
 - Generated JS must NOT contain: fetch(, XMLHttpRequest, document.cookie, localStorage, eval(, Function(
 - Do not modify <input type="password">, payment fields, or CSRF tokens.
 - Scope CSS selectors precisely to avoid unintended side effects.

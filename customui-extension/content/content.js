@@ -1,21 +1,15 @@
 // content.js — Content script (runs in every tab)
 // Responsibilities:
 //   1. Capture + prune the page DOM on request
-//   2. Inject / remove CSS and JS modifications
-//   3. Flash-highlight modified elements
-//
-// NOTE: MV3 content scripts do not support ES module imports, so the DOM
-// pruner and JS validator are inlined below. The same logic lives in
-// utils/dom-pruner.js and utils/safety.js for use by the service worker
-// and options page (which DO support modules).
+//   2. Flash-highlight modified elements
+// CSS and JS mods are now applied by the background via chrome.scripting
+// (bypasses page CSP).
 
 (function () {
   "use strict";
 
   // ── Constants ────────────────────────────────────────────────────────────
 
-  const STYLE_ID = "customui-styles";
-  const SCRIPT_ID = "customui-script";
   const FLASH_STYLE_ID = "customui-flash-styles";
 
   const TOKEN_BUDGET = 8000;
@@ -23,19 +17,6 @@
   const REMOVE_TAGS = new Set(["script", "style", "svg", "noscript", "iframe", "canvas", "video", "audio", "link", "meta"]);
   const SEMANTIC_TAGS = new Set(["nav", "main", "header", "footer", "form", "section", "article", "aside", "button", "a", "input", "select", "textarea", "label", "h1", "h2", "h3", "h4", "h5", "h6"]);
   const MAX_REPETITIONS = 2;
-
-  const BLOCKED_JS_PATTERNS = [
-    /\bfetch\s*\(/,
-    /\bXMLHttpRequest\b/,
-    /\bdocument\.cookie\b/,
-    /\blocalStorage\b/,
-    /\bsessionStorage\b/,
-    /\beval\s*\(/,
-    /\bnew\s+Function\b/,
-    /\bFunction\s*\(/,
-    /\bimportScripts\b/,
-    /\bnavigator\.sendBeacon\b/,
-  ];
 
   // ── Message router ───────────────────────────────────────────────────────
 
@@ -45,13 +26,8 @@
         sendResponse(captureDOM());
         break;
 
-      case "inject_mods":
-        injectMods(message.css ?? "", message.js ?? "");
-        sendResponse({ success: true });
-        break;
-
-      case "remove_mods":
-        removeMods();
+      case "flash_mods":
+        flashModifiedElements(message.css ?? "");
         sendResponse({ success: true });
         break;
 
@@ -205,56 +181,9 @@
     return html.slice(0, charLimit) + "\n<!-- [DOM truncated to fit token budget] -->";
   }
 
-  // ── Injection ────────────────────────────────────────────────────────────
-
-  function injectMods(css, js) {
-    injectCSS(css);
-    if (js) {
-      const jsError = validateJs(js);
-      if (jsError) {
-        console.warn("[CustomUI] Blocked unsafe JS:", jsError);
-      } else {
-        injectJS(js);
-      }
-    }
-    flashModifiedElements();
-  }
-
-  function injectCSS(css) {
-    let styleEl = document.getElementById(STYLE_ID);
-    if (!styleEl) {
-      styleEl = document.createElement("style");
-      styleEl.id = STYLE_ID;
-      document.head.appendChild(styleEl);
-    }
-    styleEl.textContent = css;
-  }
-
-  function injectJS(js) {
-    document.getElementById(SCRIPT_ID)?.remove();
-    const scriptEl = document.createElement("script");
-    scriptEl.id = SCRIPT_ID;
-    scriptEl.textContent = `"use strict"; (function() {\n${js}\n})();`;
-    (document.head ?? document.documentElement).appendChild(scriptEl);
-  }
-
-  function removeMods() {
-    document.getElementById(STYLE_ID)?.remove();
-    document.getElementById(SCRIPT_ID)?.remove();
-    document.getElementById(FLASH_STYLE_ID)?.remove();
-  }
-
-  function validateJs(js) {
-    if (!js || typeof js !== "string") return null;
-    for (const pattern of BLOCKED_JS_PATTERNS) {
-      if (pattern.test(js)) return `Blocked pattern: ${pattern.source}`;
-    }
-    return null;
-  }
-
   // ── Flash highlight ──────────────────────────────────────────────────────
 
-  function flashModifiedElements() {
+  function flashModifiedElements(css) {
     let flashStyle = document.getElementById(FLASH_STYLE_ID);
     if (!flashStyle) {
       flashStyle = document.createElement("style");
@@ -269,11 +198,10 @@
       document.head.appendChild(flashStyle);
     }
 
-    const styleEl = document.getElementById(STYLE_ID);
-    if (!styleEl?.textContent) return;
+    if (!css) return;
 
     const selectors = [];
-    const rules = styleEl.textContent.match(/[^{}]+(?=\{)/g) ?? [];
+    const rules = css.match(/[^{}]+(?=\{)/g) ?? [];
     rules.forEach((sel) => {
       const cleaned = sel.trim();
       if (cleaned && !cleaned.startsWith("@")) selectors.push(cleaned);
